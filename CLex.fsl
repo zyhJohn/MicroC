@@ -5,7 +5,7 @@
 
 module CLex
   
-open FSharp.Text.Lexing
+open Microsoft.FSharp.Text.Lexing
 open CPar;
 
 let lexemeAsString lexbuf = 
@@ -18,18 +18,30 @@ let lexemeAsString lexbuf =
 
 let keyword s =
     match s with
-    | "char"    -> CHAR 
+    | "car"     -> CAR 
+    | "cdr"     -> CDR
+    | "char"    -> CHAR
+    | "cons"    -> CONS 
+    | "dynamic" -> DYNAMIC 
     | "else"    -> ELSE
     | "false"   -> CSTBOOL 0
     | "if"      -> IF
     | "int"     -> INT
+    | "nil"     -> NIL
     | "null"    -> NULL
     | "print"   -> PRINT
     | "println" -> PRINTLN
     | "return"  -> RETURN
+    | "setcar"  -> SETCAR
+    | "setcdr"  -> SETCDR 
     | "true"    -> CSTBOOL 1
     | "void"    -> VOID 
-    | "while"   -> WHILE         
+    | "while"   -> WHILE  
+    (* NEW *)
+    | "for"     -> FOR       
+    | "switch"  -> SWITCH
+    | "case"    -> CASE
+    | "default" -> DEFAULT
     | _         -> NAME s
  
 let cEscape s = 
@@ -52,6 +64,13 @@ rule Token = parse
   | ['0'-'9']+      { CSTINT (System.Int32.Parse (lexemeAsString lexbuf)) }  
   | ['a'-'z''A'-'Z']['a'-'z''A'-'Z''0'-'9']*
                     { keyword (lexemeAsString lexbuf) }
+  | "++"            { PREINC }
+  | "--"            { PREDEC }
+  | "+="            { PLUSASSIGN }
+  | "-="            { MINUSASSIGN }
+  | "*="            { TIMESASSIGN }
+  | "/="            { DIVASSIGN }
+  | "%="            { MODASSIGN }
   | '+'             { PLUS } 
   | '-'             { MINUS } 
   | '*'             { TIMES } 
@@ -76,6 +95,8 @@ rule Token = parse
   | ']'             { RBRACK }
   | ';'             { SEMI }
   | ','             { COMMA }
+  | ':'             { COLON }
+  | '?'             { QST }
   | "//"            { EndLineComment lexbuf; Token lexbuf }
   | "/*"            { Comment lexbuf; Token lexbuf }
   | '"'             { CSTSTRING (String [] lexbuf) }

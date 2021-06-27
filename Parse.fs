@@ -5,7 +5,7 @@ module Parse
 open System
 open System.IO
 open System.Text
-open FSharp.Text
+open Microsoft.FSharp.Text
 open Absyn
 
 (* Plain parsing from a string, with poor error reporting *)

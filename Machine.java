@@ -16,6 +16,7 @@ import java.io.*;
 import java.util.*;
 
 class Machine {
+	
   public static void main(String[] args)        
     throws FileNotFoundException, IOException {
     if (args.length == 0) 
@@ -35,7 +36,13 @@ class Machine {
     GOTO = 16, IFZERO = 17, IFNZRO = 18, CALL = 19, TCALL = 20, RET = 21, 
     PRINTI = 22, PRINTC = 23, 
     LDARGS = 24,
-    STOP = 25;
+    STOP = 25,
+    NIL    = 26,
+    CONS   = 27,
+    CAR    = 28,
+    CDR    = 29,
+    SETCAR = 30,
+    SETCDR = 31;
 
   final static int STACKSIZE = 1000;
   
@@ -44,22 +51,24 @@ class Machine {
   static void execute(String[] args, boolean trace) 
     throws FileNotFoundException, IOException {
     int[] p = readfile(args[0]);                // Read the program from file
-    int[] s = new int[STACKSIZE];               // The evaluation stack
+    int[] s = new int[STACKSIZE];
+    int[] heap=new int[STACKSIZE];// The evaluation stack
     int[] iargs = new int[args.length-1];
     for (int i=1; i<args.length; i++)           // Push commandline arguments
       iargs[i-1] = Integer.parseInt(args[i]);
     long starttime = System.currentTimeMillis();
-    execcode(p, s, iargs, trace);            // Execute program proper
+    execcode(p, s, iargs, trace,heap);            // Execute program proper
     long runtime = System.currentTimeMillis() - starttime;
     System.err.println("\nRan " + runtime/1000.0 + " seconds");
   }
 
   // The machine: execute the code starting at p[pc] 
 
-  static int execcode(int[] p, int[] s, int[] iargs, boolean trace) {
+  static int execcode(int[] p, int[] s, int[] iargs, boolean trace,int[] heap) {
     int bp = -999;	// Base pointer, for local variable access 
     int sp = -1;	// Stack top pointer
     int pc = 0;		// Program counter: next instruction
+    int h=0;
     for (;;) {
       if (trace) 
         printsppc(s, bp, sp, p, pc);
@@ -124,7 +133,7 @@ class Machine {
         s[sp] = res; 
       } break; 
       case PRINTI:
-        System.out.print(s[sp] + " "); break; 
+        System.out.print(s[sp] + " "); break;
       case PRINTC:
         System.out.print((char)(s[sp])); break; 
       case LDARGS:
@@ -133,6 +142,25 @@ class Machine {
 	break;
       case STOP:
         return sp;
+      case NIL:
+        s[sp+1] = -1; sp++; break;
+      case CONS:
+        h=h+2;
+        heap[h-1]=s[sp-1];
+        heap[h]=s[sp];
+        s[sp-1] = h-1; sp--; break;
+      case CAR:
+        s[sp] = heap[s[sp]]; break;
+      case CDR:
+        s[sp] = heap[s[sp]+1]; break;
+      case SETCAR:
+        heap[s[sp-1]]=s[sp];
+        sp--;sp--;
+        break;
+      case SETCDR:
+        heap[s[sp-1]+1]=s[sp];
+        sp--;sp--;
+        break;
       default:                  
         throw new RuntimeException("Illegal instruction " + p[pc-1] 
                                    + " at address " + (pc-1));
@@ -170,6 +198,12 @@ class Machine {
     case PRINTC: return "PRINTC";
     case LDARGS: return "LDARGS";
     case STOP:   return "STOP";
+    case NIL:    return "NIL";
+    case CONS:   return "CONS";
+    case CAR:    return "CAR";
+    case CDR:    return "CDR";
+    case SETCAR: return "SETCAR";
+    case SETCDR: return "SETCDR";
     default:     return "<unknown>";
     }
   }

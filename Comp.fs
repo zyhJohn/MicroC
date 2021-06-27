@@ -77,9 +77,7 @@ let allocate (kind : int -> Var) (typ, x) (varEnv : VarEnv) : VarEnv * instr lis
       (newEnv, code)
     | _ -> 
       let newEnv = ((x, (kind (fdepth), typ)) :: env, fdepth+1)
-      let code = [INCSP 1]
-
-      printf "new varEnv: %A\n" newEnv // 调试 显示分配后环境变化
+      let code = if typ=TypD then [NIL] else [CSTI 0]
       (newEnv, code)
 
 (* Bind declared parameters in env: *)
@@ -133,6 +131,16 @@ let rec cStmt stmt (varEnv : VarEnv) (funEnv : FunEnv) : instr list =
       let labtest  = newLabel()
       [GOTO labtest; Label labbegin] @ cStmt body varEnv funEnv
       @ [Label labtest] @ cExpr e varEnv funEnv @ [IFNZRO labbegin]
+
+    | For(e1, e2, e3, body) ->         
+      let labbegin = newLabel()
+      let labtest  = newLabel()
+
+      cExpr e1 varEnv funEnv @ [INCSP -1]
+      @ [GOTO labtest; Label labbegin] @ cStmt body varEnv funEnv
+      @ cExpr e3 varEnv funEnv @ [INCSP -1]
+      @ [Label labtest] @ cExpr e2 varEnv funEnv @ [IFNZRO labbegin]
+
     | Expr e -> 
       cExpr e varEnv funEnv @ [INCSP -1]
     | Block stmts -> 
@@ -153,7 +161,23 @@ let rec cStmt stmt (varEnv : VarEnv) (funEnv : FunEnv) : instr list =
       [RET (snd varEnv - 1)]
     | Return (Some e) -> 
       cExpr e varEnv funEnv @ [RET (snd varEnv)]
+    | Switch(e1, caseList) -> 
+      let rec loop caseList1 lableend=
+          match caseList1 with 
+          | []     -> ([],[])
+          | case :: caseList2 ->
+          let labbegin = newLabel()
+          let labtest  = newLabel() 
+          let result=[GOTO labtest; Label labbegin] @ cStmt (snd case) varEnv funEnv @[GOTO lableend]@ [Label labtest] @cExpr e1 varEnv funEnv @ cExpr (fst case) varEnv funEnv@[EQ] @ [IFNZRO labbegin]
+          let (fdepthr,code)=loop caseList2 lableend
+          ([], result@code)
 
+      let lableend = newLabel()
+      let (fdepthend, code) = loop caseList lableend
+      code @[Label lableend]
+
+      
+      
 and cStmtOrDec stmtOrDec (varEnv : VarEnv) (funEnv : FunEnv) : VarEnv * instr list = 
     match stmtOrDec with 
     | Stmt stmt    -> (varEnv, cStmt stmt varEnv funEnv) 
@@ -173,16 +197,26 @@ and cStmtOrDec stmtOrDec (varEnv : VarEnv) (funEnv : FunEnv) : VarEnv * instr li
 
 and cExpr (e : expr) (varEnv : VarEnv) (funEnv : FunEnv) : instr list = 
     match e with
+    | PreInc acc     -> cAccess acc varEnv funEnv @ [DUP] @ [LDI] @ [CSTI 1] @ [ADD] @ [STI]
+    | PreDec acc     -> cAccess acc varEnv funEnv @ [DUP] @ [LDI] @ [CSTI 1] @ [SUB] @ [STI]   
     | Access acc     -> cAccess acc varEnv funEnv @ [LDI] 
     | Assign(acc, e) -> cAccess acc varEnv funEnv @ cExpr e varEnv funEnv @ [STI]
     | CstI i         -> [CSTI i]
+    | CstN           -> [NIL]
     | Addr acc       -> cAccess acc varEnv funEnv
+    | PlusAssign(acc, e) -> cAccess acc varEnv funEnv @ [DUP] @ [LDI] @ cExpr e varEnv funEnv @ [ADD] @ [STI]
+    | MinusAssign(acc, e) ->cAccess acc varEnv funEnv @ [DUP] @ [LDI] @ cExpr e varEnv funEnv @ [SUB] @ [STI]
+    | TimesAssign(acc, e) ->cAccess acc varEnv funEnv @ [DUP] @ [LDI] @ cExpr e varEnv funEnv @ [MUL] @ [STI]
+    | DivAssign(acc, e) ->cAccess acc varEnv funEnv @ [DUP] @ [LDI] @ cExpr e varEnv funEnv @ [DIV] @ [STI]
+    | ModAssign(acc, e) ->cAccess acc varEnv funEnv @ [DUP] @ [LDI] @ cExpr e varEnv funEnv @ [MOD] @ [STI]
     | Prim1(ope, e1) ->
       cExpr e1 varEnv funEnv
       @ (match ope with
          | "!"      -> [NOT]
          | "printi" -> [PRINTI]
          | "printc" -> [PRINTC]
+         | "car"    -> [CAR]
+         | "cdr"    -> [CDR]
          | _        -> raise (Failure "unknown primitive 1"))
     | Prim2(ope, e1, e2) ->
       cExpr e1 varEnv funEnv
@@ -199,7 +233,19 @@ and cExpr (e : expr) (varEnv : VarEnv) (funEnv : FunEnv) : instr list =
          | ">="  -> [LT; NOT]
          | ">"   -> [SWAP; LT]
          | "<="  -> [SWAP; LT; NOT]
+         | "cons"   -> [CONS]
+         | "setcar" -> [SETCAR]
+         | "setcdr" -> [SETCDR]
          | _     -> raise (Failure "unknown primitive 2"))
+
+    | Prim3(e1, e2, e3) ->
+      let labelse = newLabel()
+      let labend  = newLabel()
+      cExpr e1 varEnv funEnv @ [IFZERO labelse] 
+      @ cExpr e2 varEnv funEnv @ [GOTO labend]
+      @ [Label labelse] @ cExpr e3 varEnv funEnv
+      @ [Label labend]
+
     | Andalso(e1, e2) ->
       let labend   = newLabel()
       let labfalse = newLabel()
@@ -256,7 +302,7 @@ let cProgram (Prog topdecs) : instr list =
         let code = cStmt body (envf, fdepthf) funEnv
         [Label labf] @ code @ [RET (List.length paras-1)]
     let functions = 
-        List.choose (function 
+        List.choose (function  
                          | Fundec (rTy, name, argTy, body) 
                                     -> Some (compilefun (rTy, name, argTy, body))
                          | Vardec _ -> None)
@@ -276,13 +322,8 @@ let intsToFile (inss : int list) (fname : string) =
 
 let compileToFile program fname = 
     let instrs   = cProgram program 
-    // printf "instrs: %A\n" instrs
-
     let bytecode = code2ints instrs
-    // printf "bytecode: %A\n" bytecode 
 
-    // let deinstrs = decomp bytecode
-    // printf "deinstrs: %A\n" deinstrs
 
     intsToFile bytecode fname
     instrs
