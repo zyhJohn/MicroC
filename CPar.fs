@@ -296,8 +296,8 @@ let tokenTagToTokenId (tokenIdx:int) =
   | 56 -> TOKEN_NAME 
   | 57 -> TOKEN_CSTINT 
   | 58 -> TOKEN_CSTBOOL 
-  | 61 -> TOKEN_end_of_input
   | 59 -> TOKEN_error
+  | 61 -> TOKEN_end_of_input
   | _ -> failwith "tokenTagToTokenId: bad token"
 
 /// This function maps production indexes returned in syntax errors to strings representing the non terminal that would be produced by that production
