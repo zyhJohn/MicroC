@@ -18,26 +18,19 @@ let lexemeAsString lexbuf =
 
 let keyword s =
     match s with
-    | "car"     -> CAR 
-    | "cdr"     -> CDR
-    | "char"    -> CHAR
-    | "cons"    -> CONS 
-    | "dynamic" -> DYNAMIC 
+    | "char"    -> CHAR 
     | "else"    -> ELSE
     | "false"   -> CSTBOOL 0
     | "if"      -> IF
     | "int"     -> INT
-    | "nil"     -> NIL
     | "null"    -> NULL
     | "print"   -> PRINT
     | "println" -> PRINTLN
     | "return"  -> RETURN
-    | "setcar"  -> SETCAR
-    | "setcdr"  -> SETCDR 
     | "true"    -> CSTBOOL 1
     | "void"    -> VOID 
     | "while"   -> WHILE  
-    (* NEW *)
+    //这里开始是新的
     | "for"     -> FOR       
     | "switch"  -> SWITCH
     | "case"    -> CASE
@@ -63,7 +56,7 @@ rule Token = parse
   | '\n'            { lexbuf.EndPos <- lexbuf.EndPos.NextLine; Token lexbuf }
   | ['0'-'9']+      { CSTINT (System.Int32.Parse (lexemeAsString lexbuf)) }  
   | ['a'-'z''A'-'Z']['a'-'z''A'-'Z''0'-'9']*
-                    { keyword (lexemeAsString lexbuf) }
+                    { keyword (lexemeAsString lexbuf) }  
   | "++"            { PREINC }
   | "--"            { PREDEC }
   | "+="            { PLUSASSIGN }
@@ -96,7 +89,7 @@ rule Token = parse
   | ';'             { SEMI }
   | ','             { COMMA }
   | ':'             { COLON }
-  | '?'             { QST }
+  | '?'             { QSTMARK }
   | "//"            { EndLineComment lexbuf; Token lexbuf }
   | "/*"            { Comment lexbuf; Token lexbuf }
   | '"'             { CSTSTRING (String [] lexbuf) }

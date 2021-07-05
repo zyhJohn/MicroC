@@ -1,32 +1,29 @@
-/* File MicroC/Machine.java
+/* File MicroC/Machine.cs
    A unified-stack abstract machine for imperative programs.
-   sestoft@itu.dk * 2001-03-21, 2009-09-24
 
    To execute a program file using this abstract machine, do:
 
-      java Machine <programfile> <arg1> <arg2> ...
+      Machine.exe <programfile> <arg1> <arg2> ...
 
    or, to get a trace of the program execution:
 
-      java Machinetrace <programfile> <arg1> <arg2> ...
+      Machinetrace <programfile> <arg1> <arg2> ...
 
 */
 
-import java.io.*;
-import java.util.*;
 
 class Machine {
-  public static void main(String[] args)        
-    throws FileNotFoundException, IOException {
-    if (args.length == 0) 
-      System.out.println("Usage: java Machine <programfile> <arg1> ...\n");
+  public static void Main(string[] args )        
+    {
+    if (args.Length == 0) 
+      System.Console.WriteLine("Usage: Machine.exe <programfile> <arg1> ...\n");
     else
       execute(args, false);
   }
 
   // These numeric instruction codes must agree with Machine.fs:
 
-  final static int 
+  const   int 
     CSTI = 0, ADD = 1, SUB = 2, MUL = 3, DIV = 4, MOD = 5, 
     EQ = 6, LT = 7, NOT = 8, 
     DUP = 9, SWAP = 10, 
@@ -37,17 +34,17 @@ class Machine {
     LDARGS = 24,
     STOP = 25;
 
-  final static int STACKSIZE = 1000;
+  const   int STACKSIZE = 1000;
   
   // Read code from file and execute it
 
-  static void execute(String[] args, boolean trace) 
-    throws FileNotFoundException, IOException {
+  static void execute(string[] args , bool trace) 
+    {
     int[] p = readfile(args[0]);                // Read the program from file
     int[] s = new int[STACKSIZE];               // The evaluation stack
-    int[] iargs = new int[args.length-1];
-    for (int i=1; i<args.length; i++)           // Push commandline arguments
-      iargs[i-1] = Integer.parseInt(args[i]);
+    int[] iargs = new int[args.Length-1];
+    for (int i=1; i<args.Length; i++)           // Push commandline arguments
+      iargs[i-1] = Int32.Parse(args[i]);
     long starttime = System.currentTimeMillis();
     execcode(p, s, iargs, trace);            // Execute program proper
     long runtime = System.currentTimeMillis() - starttime;
@@ -56,7 +53,7 @@ class Machine {
 
   // The machine: execute the code starting at p[pc] 
 
-  static int execcode(int[] p, int[] s, int[] iargs, boolean trace) {
+  static int execcode(int[] p, int[] s , int[] iargs , bool trace) {
     int bp = -999;	// Base pointer, for local variable access 
     int sp = -1;	// Stack top pointer
     int pc = 0;		// Program counter: next instruction
@@ -86,10 +83,10 @@ class Machine {
         s[sp+1] = s[sp]; sp++; break;
       case SWAP: 
         { int tmp = s[sp];  s[sp] = s[sp-1];  s[sp-1] = tmp; } break; 
-      case LDI:                 // load indirect
-        s[sp] = s[s[sp]]; break;
-      case STI:                 // store indirect, keep value on top
-        s[s[sp-1]] = s[sp]; s[sp-1] = s[sp]; sp--; break;
+      case LDI:                    // load indirect
+        s[sp] = s[s[sp]]; break;   //s,i==> s,s(i)
+      case STI:                      // store indirect, keep value on top
+        s[s[sp-1]] = s[sp]; s[sp-1] = s[sp]; sp--; break;  //s,i,v ==> s,v; s(i) = v
       case GETBP:
         s[sp+1] = bp; sp++; break;
       case GETSP:
@@ -124,11 +121,11 @@ class Machine {
         s[sp] = res; 
       } break; 
       case PRINTI:
-        System.out.print(s[sp] + " "); break; 
+        System.Console.Write(s[sp] + " "); break; 
       case PRINTC:
-        System.out.print((char)(s[sp])); break; 
+        System.Console.Write((char)(s[sp])); break; 
       case LDARGS:
-	for (int i=0; i<iargs.length; i++) // Push commandline arguments
+	for (int i=0; i<iargs.Length; i++) // Push commandline arguments
 	  s[++sp] = iargs[i];
 	break;
       case STOP:
@@ -142,7 +139,7 @@ class Machine {
 
   // Print the stack machine instruction at p[pc]
 
-  static String insname(int[] p, int pc) {
+  static string insname(int[] p, int pc) {
     switch (p[pc]) {
     case CSTI:   return "CSTI " + p[pc+1]; 
     case ADD:    return "ADD";
@@ -177,32 +174,31 @@ class Machine {
   // Print current stack and current instruction
 
   static void printsppc(int[] s, int bp, int sp, int[] p, int pc) {
-    System.out.print("[ ");
+    System.Console.Write("[ ");
     for (int i=0; i<=sp; i++)
-      System.out.print(s[i] + " ");
-    System.out.print("]");
-    System.out.println("{" + pc + ": " + insname(p, pc) + "}"); 
+      System.Console.Write(s[i] + " ");
+    System.Console.Write("]");
+   System.Console.WriteLine("{" + pc + ": " + insname(p, pc) + "}"); 
   }
 
   // Read instructions from a file
 
-  public static int[] readfile(String filename) 
-    throws FileNotFoundException, IOException
+  public static int[] readfile(string filename) 
   {
-    ArrayList<Integer> rawprogram = new ArrayList<Integer>();
+    ArrayList<Int32> rawprogram = new ArrayList<Int32>();
     Reader inp = new FileReader(filename);
     StreamTokenizer tstream = new StreamTokenizer(inp);
     tstream.parseNumbers();
     tstream.nextToken();
     while (tstream.ttype == StreamTokenizer.TT_NUMBER) {
-      rawprogram.add(new Integer((int)tstream.nval));
+      rawprogram.add(new Int32((int)tstream.nval));
       tstream.nextToken();
     }
     inp.close();
-    final int programsize = rawprogram.size();
+     int programsize = rawprogram.size();
     int[] program = new int[programsize];
     for (int i=0; i<programsize; i++)
-      program[i] = ((Integer)(rawprogram.get(i))).intValue();
+      program[i] = ((Int32)(rawprogram.get(i))).intValue();
     return program;
   }
 }
@@ -210,10 +206,10 @@ class Machine {
 // Run the machine with tracing: print each instruction as it is executed
 
 class Machinetrace {
-  public static void main(String[] args)        
-    throws FileNotFoundException, IOException {
-    if (args.length == 0) 
-      System.out.println("Usage: java Machinetrace <programfile> <arg1> ...\n");
+  public static void main(string[] args)        
+    {
+    if (args.Length == 0) 
+     System.Console.WriteLine("Usage: java Machinetrace <programfile> <arg1> ...\n");
     else
       Machine.execute(args, true);
   }
